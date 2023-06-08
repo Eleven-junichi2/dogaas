@@ -2,13 +2,12 @@
 name = "dogaas"
 version = "0.1.0"
 description = ""
-authors = ["Eleven-junichi2 <junichinomori@yahoo.co.jp>"]
+authors = ["Eleven-junichi2"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 flet = "^0.7.4"
-
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^5.12.0"

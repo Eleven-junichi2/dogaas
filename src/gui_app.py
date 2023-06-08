@@ -22,9 +22,43 @@ with open(
 downloader = Downloader()
 
 
+class TasksView(ft.UserControl):
+    def build(self):
+        tasks_view = ft.ListView(expand=1)
+        return tasks_view
+
+
+class TaskDisplay(ft.UserControl):
+    def __init__(self, task_name: str):
+        self.task_name = task_name
+
+    def build(self):
+        remove_btn = ft.IconButton(ft.icons.DELETE)
+        url_display = ft.TextField(value=self.task_name)
+        return ft.Row([url_display, remove_btn])
+
+
 class DownloaderScene(ft.UserControl):
     def build(self):
-        return ft.Text("Hello world")
+        add_task_btn = ft.ElevatedButton(
+            text=i18ntexts["add_task"],
+            icon=ft.icons.ADD,
+            expand=1
+        )
+        new_task_name_textfield = ft.TextField()
+        new_task_url_textfield = ft.TextField()
+        tasks_view = TasksView()
+        return ft.Container(
+            ft.Column(
+                [
+                    new_task_name_textfield,
+                    new_task_url_textfield,
+                    ft.Row([add_task_btn]),
+                    tasks_view
+                ]
+            ),
+            padding=10,
+        )
 
 
 class SettingsScene(ft.UserControl):
@@ -40,6 +74,7 @@ def main(page: ft.Page):
             ft.Tab(text=i18ntexts["tab_header_downloader"], content=DownloaderScene()),
             ft.Tab(text=i18ntexts["tab_header_settings"], content=SettingsScene()),
         ],
+        expand=1,
     )
     page.add(tabs)
 

@@ -57,7 +57,7 @@ class TaskManager(TaskDatabaseInterface):
 
 
 class Downloader:
-    def __init__(self, task_manager: Optional[None]):
+    def __init__(self, task_manager: Optional[None] = None):
         """
         Args:
             task_manager (Optional[None]):

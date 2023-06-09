@@ -17,6 +17,10 @@ def is_url(url: str, raise_if_not=False) -> bool:
         return False
 
 
+class DuplicateTaskError(Exception):
+    pass
+
+
 @dataclass
 class DownloaderTask:
     _url: str
@@ -66,11 +70,11 @@ class TaskManager(TaskDatabaseInterface):
                 self.add_task(name, task)
 
     def add_task(
-        self,
-        name: str,
-        task: DownloaderTask,
+        self, name: str, task: DownloaderTask, raise_if_duplicate: bool = False
     ):
         if isinstance(task, DownloaderTask):
+            if self.tasks.get(name, False):
+                raise DuplicateTaskError(f"task `{name}` already exists")
             self.tasks[name] = task
             if self.on_add:
                 self.on_add()

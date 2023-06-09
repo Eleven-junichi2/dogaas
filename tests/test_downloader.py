@@ -1,4 +1,13 @@
+import pytest
+
 from src.dogaas.downloader import TaskManager, DownloaderTask
+
+
+class TestDownloaderTask:
+    @staticmethod
+    def test_raise_invalid_url():
+        with pytest.raises(ValueError) as e:
+            DownloaderTask("invalid_url")
 
 
 class TestTaskManager:

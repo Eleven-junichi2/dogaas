@@ -4,6 +4,7 @@ import json
 from typing import Callable
 
 import flet as ft
+import requests
 
 from dogaas.downloader import TaskManager, DownloaderTask, is_url
 
@@ -54,9 +55,11 @@ class TaskDisplay(ft.UserControl):
         self.url_display = ft.TextField(
             value=self.task.url, on_submit=lambda e: self.rewrite_task_url()
         )
+        self.checkbox = ft.Checkbox(value=False)
         return ft.Container(
             ft.Row(
                 [
+                    self.checkbox,
                     ft.Column([self.task_name_display, self.url_display], expand=1),
                     remove_btn,
                 ],
@@ -118,6 +121,13 @@ class DownloaderScene(ft.UserControl):
             padding=10,
             expand=1,
         )
+
+    def do_downloader_tasks(self):
+        # TODO: open filedialog to get where to save downloads
+        urls = []
+        successful_task_names = []
+        for task in self.dltask_manager:
+            pass
 
     def add_task(self):
         invalid_task = False

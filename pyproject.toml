@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 flet = "^0.7.4"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^5.12.0"

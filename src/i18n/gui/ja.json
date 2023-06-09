@@ -8,5 +8,8 @@
     "download": "ダウンロード",
     "ask_confirm_dl": "このリスト内容でダウンロードしますか？",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "doing_download": "ダウンロード中…",
+    "dl_complete": "ダウンロード完了",
+    "close": "閉じる"
 }

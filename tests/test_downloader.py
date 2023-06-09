@@ -6,7 +6,7 @@ from src.dogaas.downloader import TaskManager, DownloaderTask
 class TestDownloaderTask:
     @staticmethod
     def test_raise_invalid_url():
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError):
             DownloaderTask("invalid_url")
 
 

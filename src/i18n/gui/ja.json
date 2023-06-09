@@ -4,5 +4,9 @@
     "add_task": "タスクを追加",
     "input_dl_url": "ダウンロード先のURLを入力",
     "input_dl_task_name": "ダウンロードタスクの名前を入力",
-    "duplicate_task_name": "その名前のタスクは既に存在しています"
+    "duplicate_task_name": "その名前のタスクは既に存在しています",
+    "download": "ダウンロード",
+    "ask_confirm_dl": "このリスト内容でダウンロードしますか？",
+    "yes": "はい",
+    "no": "いいえ"
 }

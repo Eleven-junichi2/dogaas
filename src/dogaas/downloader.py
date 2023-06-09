@@ -1,7 +1,11 @@
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlparse, unquote
 from typing import Callable, Optional
 import abc
 import re
+
+import requests
 
 
 def is_url(url: str, raise_if_not=False) -> bool:
@@ -89,28 +93,27 @@ class TaskManager(TaskDatabaseInterface):
         else:
             raise TypeError("`task_name` must be `str`")
 
-    def download(self, task_name: str):
+    def download(
+        self, task_name: str, dirpath_for_dest: Path | str, yield_progress=True
+    ) -> None | float:
         if isinstance(task_name, str):
+            url = self.tasks[task_name].url
+            dlfile_name = self.filename_from_url(url)
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                file_size = int(response.headers.get("Content-Length"))
+                progress = 0
+                with open(Path(dirpath_for_dest) / dlfile_name, "wb") as file:
+                    chunk_size = 1024
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        progress += len(chunk)
+                        file.write(chunk)
+                        if yield_progress:
+                            yield progress / file_size
             if self.on_download:
                 self.on_download()
         else:
             raise TypeError("`task_name` must be `str`")
 
-
-class Downloader:
-    def __init__(self, task_manager: Optional[TaskManager] = None):
-        """
-        Args:
-            task_manager (Optional[None]):
-        """
-        if task_manager is None:
-            task_manager = TaskManager()
-        self._task_manager = task_manager
-
-    @property
-    def task_manager(self) -> TaskManager:
-        return self.task_manager
-
-    @property
-    def tasks(self) -> Tasks:
-        return self.task_manager.tasks
+    def filename_from_url(self, url: str) -> str:
+        return unquote(Path(urlparse(url).path).name)

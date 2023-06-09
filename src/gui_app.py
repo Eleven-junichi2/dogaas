@@ -4,7 +4,6 @@ import json
 from typing import Callable
 
 import flet as ft
-import requests
 
 from dogaas.downloader import TaskManager, DownloaderTask, is_url
 
@@ -25,16 +24,11 @@ with open(
 class TaskDisplay(ft.UserControl):
     def __init__(
         self,
-        downloader_task: DownloaderTask,
         task_name: str,
         task_manager: TaskManager,
         delete_task_func: Callable,
     ):
         super().__init__()
-        if isinstance(downloader_task, DownloaderTask):
-            self.task = downloader_task
-        else:
-            raise TypeError("`downloader_task` must be `DownloaderTask`")
         if isinstance(task_name, str):
             self.task_name = task_name
         else:
@@ -53,7 +47,8 @@ class TaskDisplay(ft.UserControl):
             value=self.task_name, on_submit=lambda e: self.rename_task()
         )
         self.url_display = ft.TextField(
-            value=self.task.url, on_submit=lambda e: self.rewrite_task_url()
+            value=self.task_manager.tasks[self.task_name].url,
+            on_submit=lambda e: self.rewrite_task_url(),
         )
         self.checkbox = ft.Checkbox(value=False)
         return ft.Container(
@@ -75,7 +70,7 @@ class TaskDisplay(ft.UserControl):
             self.task_manager.rename_task(self.task_name, self.task_name_display.value)
             self.task_name_display.error_text = None
             self.task_name_display.update()
-
+            self.task_name = self.task_name_display.value
         else:
             self.task_name_display.error_text = i18ntexts["input_dl_task_name"]
             self.task_name_display.update()
@@ -87,16 +82,43 @@ class TaskDisplay(ft.UserControl):
     def rewrite_task_url(self):
         if is_url(self.url_display.value):
             self.task_manager.tasks[self.task_name].rewrite_url(self.url_display.value)
-            self.task_name_display.error_text = None
-            self.task_name_display.update()
+            self.url_display.error_text = None
+            self.url_display.update()
         else:
-            self.task_name_display.error_text = i18ntexts["input_dl_url"]
-            self.task_name_display.update()
+            self.url_display.error_text = i18ntexts["input_dl_url"]
+            self.url_display.update()
 
 
 class DownloaderScene(ft.UserControl):
-    def build(self):
+    def __init__(self, page: ft.Page):
+        super().__init__()
+        self.page = page
         self.dltask_manager = TaskManager()
+        self.dirdialog = ft.FilePicker(
+            on_result=lambda e: self.set_dirpath_for_dest_of_dl(e)
+        )
+        self.page.overlay.append(self.dirdialog)
+        self.confirm_dl_dialog = ft.AlertDialog(
+            title=ft.Text(i18ntexts["ask_confirm_dl"]),
+            actions=[
+                ft.TextButton(
+                    text=i18ntexts["yes"],
+                    on_click=lambda e: self.dirdialog.get_directory_path(
+                        initial_directory=THIS_SCRIPT_DIR
+                    ),
+                ),
+                ft.TextButton(
+                    text=i18ntexts["no"],
+                    on_click=lambda e: self.close_dialog(self.confirm_dl_dialog),
+                ),
+            ],
+        )
+
+    def set_dirpath_for_dest_of_dl(self, e: ft.FilePickerResultEvent):
+        self.dirpath_for_dest_of_downloads = e.path
+        self.do_downloader_tasks()
+
+    def build(self):
         self.tasks_view = ft.Column(expand=1, spacing=4, scroll=ft.ScrollMode.ALWAYS)
         add_task_btn = ft.ElevatedButton(
             text=i18ntexts["add_task"],
@@ -108,6 +130,12 @@ class DownloaderScene(ft.UserControl):
             hint_text=i18ntexts["input_dl_task_name"],
         )
         self.new_task_url_textfield = ft.TextField(hint_text=i18ntexts["input_dl_url"])
+        self.download_btn = ft.ElevatedButton(
+            text=i18ntexts["download"],
+            icon=ft.icons.DOWNLOAD,
+            expand=1,
+            on_click=lambda e: self.open_dialog_to_confirm_dl(self.confirm_dl_dialog),
+        )
         return ft.Container(
             ft.Column(
                 [
@@ -115,6 +143,7 @@ class DownloaderScene(ft.UserControl):
                     self.new_task_url_textfield,
                     ft.Row([add_task_btn]),
                     self.tasks_view,
+                    ft.Row([self.download_btn]),
                 ],
                 expand=1,
             ),
@@ -122,35 +151,82 @@ class DownloaderScene(ft.UserControl):
             expand=1,
         )
 
+    def get_listview_for_reserved_tasks(self) -> ft.Column:
+        print(self.dltask_manager.tasks)
+        listview = ft.Column(
+            [ft.Text(task_name) for task_name in self.reserved_task_names()],
+            scroll=ft.ScrollMode.ALWAYS,
+            expand=1,
+        )
+        return listview
+
+    def open_dialog(self, dialog: ft.AlertDialog):
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def open_dialog_to_confirm_dl(self, dialog: ft.AlertDialog):
+        reserved_task_names = self.get_listview_for_reserved_tasks()
+        if self.dltask_manager.tasks and len(reserved_task_names.controls) > 0:
+            dialog.content = reserved_task_names
+            self.open_dialog(dialog)
+        else:
+            if not self.new_task_name_textfield.value:
+                self.show_err_for_newtaskname_textfield(i18ntexts["input_dl_task_name"])
+            if not is_url(self.new_task_url_textfield.value):
+                self.show_err_for_newtaskurl_textfield(i18ntexts["input_dl_url"])
+
+    def close_dialog(self, dialog: ft.AlertDialog):
+        dialog.open = False
+        self.page.update()
+
+    def reserved_task_names(self) -> list[str]:
+        return [
+            taskdisplay.task_name
+            for taskdisplay in self.tasks_view.controls
+            if taskdisplay.checkbox.value
+        ]
+
     def do_downloader_tasks(self):
         # TODO: open filedialog to get where to save downloads
-        urls = []
-        successful_task_names = []
-        for task in self.dltask_manager:
-            pass
+
+        dirpath_for_dest_of_downloads = self.dirpath_for_dest_of_downloads
+        for task_name, reserved_task_name in zip(
+            self.dltask_manager.tasks.keys(), self.reserved_task_names()
+        ):
+            if task_name == reserved_task_name:
+                [
+                    print("downloading...", progress)
+                    for progress in self.dltask_manager.download(
+                        task_name, dirpath_for_dest_of_downloads
+                    )
+                ]
+
+    def show_err_for_newtaskname_textfield(self, err_text: str):
+        self.new_task_name_textfield.error_text = err_text
+        self.new_task_name_textfield.update()
+
+    def show_err_for_newtaskurl_textfield(self, err_text: str):
+        self.new_task_url_textfield.error_text = err_text
+        self.new_task_url_textfield.update()
 
     def add_task(self):
         invalid_task = False
         if not (task_name := self.new_task_name_textfield.value):
-            self.new_task_name_textfield.error_text = i18ntexts["input_dl_task_name"]
-            self.new_task_name_textfield.update()
+            self.show_err_for_newtaskname_textfield(i18ntexts["input_dl_task_name"])
             invalid_task = True
         elif self.dltask_manager.tasks.get(task_name):
-            self.new_task_name_textfield.error_text = i18ntexts["duplicate_task_name"]
-            self.new_task_name_textfield.update()
+            self.show_err_for_newtaskname_textfield(i18ntexts["duplicate_task_name"])
             invalid_task = True
         if not is_url(task_url := self.new_task_url_textfield.value):
-            self.new_task_url_textfield.error_text = i18ntexts["input_dl_url"]
-            self.new_task_url_textfield.update()
+            self.show_err_for_newtaskurl_textfield(i18ntexts["input_dl_url"])
             invalid_task = True
         if invalid_task:
             return
         else:
-            new_task = DownloaderTask(task_url)
-            self.dltask_manager.add_task(name=task_name, task=new_task)
+            self.dltask_manager.add_task(name=task_name, task=DownloaderTask(task_url))
             self._add_taskdisplay(
                 TaskDisplay(
-                    new_task,
                     task_name=task_name,
                     task_manager=self.dltask_manager,
                     delete_task_func=self._delete_task,
@@ -184,7 +260,9 @@ def main(page: ft.Page):
     tabs = ft.Tabs(
         selected_index=0,
         tabs=[
-            ft.Tab(text=i18ntexts["tab_header_downloader"], content=DownloaderScene()),
+            ft.Tab(
+                text=i18ntexts["tab_header_downloader"], content=DownloaderScene(page)
+            ),
             ft.Tab(text=i18ntexts["tab_header_settings"], content=SettingsScene()),
         ],
         expand=1,

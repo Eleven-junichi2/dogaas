@@ -5,6 +5,8 @@ from typing import Callable, Optional
 import abc
 import re
 
+from serde import serialize, deserialize
+from serde.json import from_json, to_json
 import requests
 
 
@@ -21,6 +23,8 @@ class DuplicateTaskError(Exception):
     pass
 
 
+@deserialize
+@serialize
 @dataclass
 class DownloaderTask:
     _url: str
@@ -73,7 +77,7 @@ class TaskManager(TaskDatabaseInterface):
         self, name: str, task: DownloaderTask, raise_if_duplicate: bool = False
     ):
         if isinstance(task, DownloaderTask):
-            if self.tasks.get(name, False):
+            if self.tasks.get(name, False) and raise_if_duplicate:
                 raise DuplicateTaskError(f"task `{name}` already exists")
             self.tasks[name] = task
             if self.on_add:
@@ -90,6 +94,15 @@ class TaskManager(TaskDatabaseInterface):
             raise TypeError("`task_name` must be a `str`")
 
     def remove_task(self, task_name: str):
+        """remove task
+
+        Args:
+            task_name (str):
+
+        Raises:
+            TypeError:
+            KeyError:
+        """
         if isinstance(task_name, str):
             self.tasks.pop(task_name)
             if self.on_remove:
@@ -107,7 +120,9 @@ class TaskManager(TaskDatabaseInterface):
             if response.status_code == 200:
                 file_size = int(response.headers.get("Content-Length"))
                 progress = 0
-                with open(Path(dirpath_for_dest) / dlfile_name, "wb") as file:
+                with open(
+                    Path(dirpath_for_dest).absolute() / dlfile_name, "wb"
+                ) as file:
                     chunk_size = 1024
                     for chunk in response.iter_content(chunk_size=chunk_size):
                         progress += len(chunk)
@@ -121,3 +136,17 @@ class TaskManager(TaskDatabaseInterface):
 
     def filename_from_url(self, url: str) -> str:
         return unquote(Path(urlparse(url).path).name)
+
+    def save_tasks_to_json(
+        self, dirpath_for_dest: Path | str, filename_without_ext_str: str
+    ):
+        with open(
+            Path(dirpath_for_dest).absolute() / f"{filename_without_ext_str}.json", "w"
+        ) as f:
+            f.write(to_json(self.tasks))
+
+    def load_tasks_from_json(self, filepath: Path | str):
+        if not Path(filepath).exists():
+            raise FileNotFoundError()
+        with open(Path(filepath), encoding="utf-8") as f:
+            self.tasks = from_json(dict[str, DownloaderTask], f.read())

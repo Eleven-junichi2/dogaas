@@ -1,9 +1,11 @@
 import pytest
-from unittest.mock import patch
+
+# from unittest.mock import patch
 
 
 from src.dogaas.downloader import TaskManager, DownloaderTask, DuplicateTaskError
-import requests
+
+# import requests
 
 
 class TestDownloaderTask:
@@ -50,3 +52,19 @@ class TestTaskManager:
         #     mock.return_value = response
         #     with pytest.raises(requests.exceptions.HTTPError):
         taskmanager.download(TASK_NAME, tmpdir)
+
+    @staticmethod
+    def test_save_tasks_to_json(tmpdir):
+        taskmanager = TaskManager()
+        taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
+        taskmanager.save_tasks_to_json(tmpdir, "test")
+
+    @staticmethod
+    def test_load_tasks_from_json(tmpdir):
+        taskmanager = TaskManager()
+        taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
+        taskmanager.save_tasks_to_json(tmpdir, "test")
+        taskmanager.load_tasks_from_json(tmpdir.join("test.json"))
+        with pytest.raises(FileNotFoundError):
+            taskmanager.load_tasks_from_json(tmpdir.join("invalidfilename"))
+

@@ -19,6 +19,10 @@ def is_url(url: str, raise_if_not=False) -> bool:
         return False
 
 
+def filename_from_url(url: str) -> str:
+    return unquote(Path(urlparse(url).path).name)
+
+
 class DuplicateTaskError(Exception):
     pass
 
@@ -62,13 +66,11 @@ class TaskManager(TaskDatabaseInterface):
         on_add: Optional[Callable[..., None]] = None,
         on_remove: Optional[Callable[..., None]] = None,
         on_rename: Optional[Callable[..., None]] = None,
-        on_download: Optional[Callable[..., None]] = None,
     ):
         self.tasks: Tasks = {}
         self.on_add = on_add
         self.on_remove = on_remove
         self.on_rename = on_rename
-        self.on_download = on_download
         if tasks:
             for name, task in tasks.items():
                 self.add_task(name, task)
@@ -110,32 +112,13 @@ class TaskManager(TaskDatabaseInterface):
         else:
             raise TypeError("`task_name` must be `str`")
 
-    def download(
-        self, task_name: str, dirpath_for_dest: Path | str, yield_progress=True
-    ) -> None | float:
+    def make_downloader_from_task(self, task_name: str) -> "Downloader":
+        """Try to request content to download by task then return `Downloader`."""
         if isinstance(task_name, str):
-            url = self.tasks[task_name].url
-            dlfile_name = self.filename_from_url(url)
-            response = requests.get(url, stream=True)
-            if response.status_code == 200:
-                file_size = int(response.headers.get("Content-Length"))
-                progress = 0
-                with open(
-                    Path(dirpath_for_dest).absolute() / dlfile_name, "wb"
-                ) as file:
-                    chunk_size = 1024
-                    for chunk in response.iter_content(chunk_size=chunk_size):
-                        progress += len(chunk)
-                        file.write(chunk)
-                        if yield_progress:
-                            yield progress / file_size
-            if self.on_download:
-                self.on_download()
+            response = requests.get(self.tasks[task_name].url, stream=True)
+            return Downloader(response)
         else:
             raise TypeError("`task_name` must be `str`")
-
-    def filename_from_url(self, url: str) -> str:
-        return unquote(Path(urlparse(url).path).name)
 
     def save_tasks_to_json(
         self, dirpath_for_dest: Path | str, filename_without_ext_str: str
@@ -150,3 +133,27 @@ class TaskManager(TaskDatabaseInterface):
             raise FileNotFoundError()
         with open(Path(filepath), encoding="utf-8") as f:
             self.tasks = from_json(dict[str, DownloaderTask], f.read())
+
+
+class Downloader:
+    def __init__(self, response: requests.Response):
+        self._response = response
+
+    @property
+    def response(self) -> requests.Response:
+        return self._response
+
+    def get_filesize_str(self) -> str:
+        return self.response.headers.get("Content-Length", 0)
+
+    def download(
+        self, dirpath_for_dest: Path | str, chunk_size=1024, yield_progress=True
+    ) -> None | float:
+        dlfile_name = filename_from_url(self.response.url)
+        progress = 0
+        with open(Path(dirpath_for_dest).absolute() / dlfile_name, "wb") as file:
+            for chunk in self.response.iter_content(chunk_size=chunk_size):
+                progress += len(chunk)
+                file.write(chunk)
+                if yield_progress:
+                    yield progress

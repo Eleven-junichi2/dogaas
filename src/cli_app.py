@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 import json
+import time
 
 from click_aliases import ClickAliasedGroup
 import click
@@ -113,15 +114,21 @@ def validate_dl_taskname(ctx, param, value):
     "--dirpath-for-dest",
     "--dest",
     prompt=i18ntexts["input_destdir_for_dl"],
+    type=click.Path(file_okay=False),
 )
 def download(name, dirpath_for_dest):
-    print("name: ", name)
-    [
-        progress_bar
-        for progress_bar in tqdm(
-            task_manager.download(name, dirpath_for_dest, yield_progress=True)
-        )
-    ]
+    downloader = task_manager.make_downloader_from_task(name)
+    progress_bar = tqdm(
+        total=float(downloader.get_filesize_str()),
+        unit="iB",
+        unit_scale=True,
+        mininterval=0,
+        miniters=1,
+    )
+    for progress in downloader.download(dirpath_for_dest, yield_progress=True):
+        progress_bar.update(progress)
+    progress_bar.close()
+    click.secho(i18ntexts["dl_complete"], fg="bright_green")
 
 
 if __name__ == "__main__":

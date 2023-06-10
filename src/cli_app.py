@@ -1,7 +1,6 @@
 from pathlib import Path
 import sys
 import json
-import time
 
 from click_aliases import ClickAliasedGroup
 import click

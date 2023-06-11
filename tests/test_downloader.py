@@ -22,7 +22,9 @@ class TestTaskManager:
         taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
         assert taskmanager.tasks["task_a"].url == "https://dummy_url_a"
         with pytest.raises(DuplicateTaskError):
-            taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"), raise_if_duplicate=True)
+            taskmanager.add_task(
+                "task_a", DownloaderTask("https://dummy_url_a"), raise_if_duplicate=True
+            )
 
     @staticmethod
     def test_remove_task():

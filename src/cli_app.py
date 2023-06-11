@@ -141,7 +141,7 @@ def download(name, dirpath_for_dest):
     click.secho(i18ntexts["dl_complete"], fg="bright_green")
 
 
-@cli.command()
+@cli.command(help=i18ntexts["help_msg_shell"])
 def repl():
     help_text_lines = [
         f"{cmd}\t{cli.commands[cmd].help}"

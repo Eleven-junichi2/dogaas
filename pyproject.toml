@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dogaas"
-version = "0.1.0"
+version = "1.0.0rc0"
 description = ""
 authors = ["Eleven-junichi2"]
 readme = "README.md"

@@ -25,5 +25,6 @@
     "there_are_no_tasks": "タスクは登録されていません",
     "input_destdir_for_dl": "ダウンロードの保存先ディレクトリを入力",
     "pause_input_to_end": "適当なキーを入力して終了",
-    "help_msg_tasks": "ダウンロードタスクを一覧表示します"
+    "help_msg_tasks": "ダウンロードタスクを一覧表示します",
+    "help_msg_download": "タスクを選択しダウンロードを実行します"
 }

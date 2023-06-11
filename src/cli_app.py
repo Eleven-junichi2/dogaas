@@ -37,6 +37,29 @@ def cli():
     pass
 
 
+ALIASES_FOR_SHELL_SUBCMD = ["shell", "interact", "interactive-shell", "interactive"]
+
+
+@cli.command(
+    aliases=ALIASES_FOR_SHELL_SUBCMD,
+    help=i18ntexts["help_msg_shell"],
+)
+def shell():
+    while True:
+        args_str: str = click.prompt(
+            "", prompt_suffix=f"{i18ntexts['how_to_exit_shell']}> "
+        )
+        # -prevent to shell called-
+        if (args := args_str.split(" "))[0] not in ALIASES_FOR_SHELL_SUBCMD:
+            break
+        # --
+    try:
+        cli.main(args=args)
+    except SystemExit:
+        pass
+    click.pause(i18ntexts["pause_input_to_end"])
+
+
 @cli.command(help=i18ntexts["help_msg_add"])
 @click.option(
     "--name",
@@ -53,17 +76,17 @@ def cli():
 def add(name, url):
     if is_url(task_url := url):
         task = DownloaderTask(task_url)
+        try:
+            task_manager.add_task(name, task, raise_if_duplicate=True)
+        except DuplicateTaskError:
+            click.echo(i18ntexts["duplicate_task_name"], err=True)
+        else:
+            click.secho(i18ntexts["added_task"], fg="bright_green")
+            click.secho(i18ntexts["task_name"] + ": " + name, fg="green")
+            click.secho("URL: " + task_url, fg="green")
+            task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
     else:
         click.echo(i18ntexts["invalid_url"], err=True)
-    try:
-        task_manager.add_task(name, task, raise_if_duplicate=True)
-    except DuplicateTaskError:
-        click.echo(i18ntexts["duplicate_task_name"], err=True)
-    else:
-        click.secho(i18ntexts["added_task"], fg="bright_green")
-        click.secho(i18ntexts["task_name"] + ": " + name, fg="green")
-        click.secho("URL: " + task_url, fg="green")
-        task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
 
 
 @cli.command(aliases=["rm", "del"], help=i18ntexts["help_msg_remove"])

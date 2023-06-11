@@ -1,4 +1,6 @@
 {
+    "help_msg_shell": "対話型シェルを実行し、コマンドの入力を待機した状態で起動します。", 
+    "how_to_exit_shell": "(Ctrl + Z キーで終了/--helpでヘルプを表示)",
     "tab_header_downloader": "ダウンローダ",
     "tab_header_settings": "設定",
     "add_task": "タスクを追加",
@@ -21,5 +23,6 @@
     "help_msg_add": "ダウンロードタスクを新規追加します",
     "help_msg_remove": "ダウンロードタスクを削除",
     "there_are_no_tasks": "タスクは登録されていません",
-    "input_destdir_for_dl": "ダウンロードの保存先ディレクトリを入力"
+    "input_destdir_for_dl": "ダウンロードの保存先ディレクトリを入力",
+    "pause_input_to_end": "適当なキーを入力して終了"
 }

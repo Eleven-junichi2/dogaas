@@ -37,7 +37,7 @@ def cli():
     pass
 
 
-ALIASES_FOR_SHELL_SUBCMD = ["shell", "interact", "interactive-shell", "interactive"]
+ALIASES_FOR_SHELL_SUBCMD = ["interact", "interactive-shell", "interactive"]
 
 
 @cli.command(
@@ -50,7 +50,7 @@ def shell():
             "", prompt_suffix=f"{i18ntexts['how_to_exit_shell']}> "
         )
         # -prevent to shell called-
-        if (args := args_str.split(" "))[0] not in ALIASES_FOR_SHELL_SUBCMD:
+        if (args := args_str.split(" "))[0] not in ALIASES_FOR_SHELL_SUBCMD + ["shell"]:
             break
         # --
     try:

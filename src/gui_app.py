@@ -1,4 +1,4 @@
-# TODO: refactor code
+# TODO: refactoring code
 
 from pathlib import Path
 import sys
@@ -32,6 +32,9 @@ def open_dialog(page: ft.Page, dialog: ft.AlertDialog):
 def close_dialog(page: ft.Page, dialog: ft.AlertDialog):
     dialog.open = False
     page.update()
+
+
+task_manager = TaskManager()
 
 
 class TaskDisplay(ft.UserControl):
@@ -121,43 +124,6 @@ class DownloaderScene(ft.UserControl):
     def __init__(self, page: ft.Page):
         super().__init__()
         self.page = page
-        self.dltask_manager = TaskManager()
-        self.dirdialog = ft.FilePicker(
-            on_result=lambda e: self.set_dirpath_for_dest_of_dl(e)
-        )
-        self.page.overlay.append(self.dirdialog)
-
-        def open_dirdialog_after_close_confirm_dl_dialog(dialog: ft.AlertDialog):
-            close_dialog(self.page, dialog)
-            self.dirdialog.get_directory_path(initial_directory=THIS_SCRIPT_DIR)
-
-        self.confirm_dl_dialog = ft.AlertDialog(
-            title=ft.Text(i18ntexts["ask_confirm_dl"]),
-            actions=[
-                ft.TextButton(
-                    text=i18ntexts["yes"],
-                    on_click=lambda e: open_dirdialog_after_close_confirm_dl_dialog(
-                        self.confirm_dl_dialog
-                    ),
-                ),
-                ft.TextButton(
-                    text=i18ntexts["no"],
-                    on_click=lambda e: close_dialog(self.page, self.confirm_dl_dialog),
-                ),
-            ],
-        )
-        self.dl_progress_bar = ft.ProgressBar(
-            expand=1, color=ft.colors.AMBER, bgcolor="#ddddee"
-        )
-        self.show_dl_progress_dialog = ft.AlertDialog(
-            title=ft.Text(i18ntexts["doing_download"]),
-            content=self.dl_progress_bar,
-            modal=True,
-        )
-
-    def set_dirpath_for_dest_of_dl(self, e: ft.FilePickerResultEvent):
-        self.dirpath_for_dest_of_downloads = e.path
-        self.do_downloader_tasks()
 
     def build(self):
         self.tasks_view = ft.Ref[ft.Column]()
@@ -183,7 +149,6 @@ class DownloaderScene(ft.UserControl):
                                 text=i18ntexts["add_task"],
                                 icon=ft.icons.ADD,
                                 expand=1,
-                                on_click=lambda e: self.add_task(),
                             )
                         ]
                     ),
@@ -200,9 +165,6 @@ class DownloaderScene(ft.UserControl):
                                 text=i18ntexts["download"],
                                 icon=ft.icons.DOWNLOAD,
                                 expand=1,
-                                on_click=lambda e: self.open_dialog_to_confirm_dl(
-                                    self.confirm_dl_dialog
-                                ),
                             )
                         ]
                     ),
@@ -212,109 +174,6 @@ class DownloaderScene(ft.UserControl):
             padding=10,
             expand=1,
         )
-
-    def get_listview_for_reserved_tasks(self) -> ft.Column:
-        listview = ft.Column(
-            [ft.Text(task_name) for task_name in self.reserved_tasknames()],
-            scroll=ft.ScrollMode.ALWAYS,
-            expand=1,
-        )
-        return listview
-
-    def open_dialog_to_confirm_dl(self, dialog: ft.AlertDialog):
-        reserved_task_names = self.get_listview_for_reserved_tasks()
-        if self.dltask_manager.tasks and len(reserved_task_names.controls) > 0:
-            dialog.content = reserved_task_names
-            open_dialog(self.page, dialog)
-        else:
-            if not self.new_taskname_txtfield.current.value:
-                self.show_err_for_newtaskname_textfield(i18ntexts["input_dl_task_name"])
-            if not is_url(self.new_taskurl_txtfield.current.value):
-                self.show_err_for_newtaskurl_textfield(i18ntexts["input_dl_url"])
-
-    def reserved_tasknames(self) -> list[str]:
-        print(self.tasks_view.current.controls)
-        return [
-            taskdisplay.task_name
-            for taskdisplay in self.tasks_view.current.controls
-            if taskdisplay.checkbox.current.value
-        ]
-
-    def do_downloader_tasks(self):
-        # TODO: open filedialog to get where to save downloads
-        def close_all_dialog():
-            close_dialog(self.page, self.show_dl_progress_dialog)
-
-        open_dialog(self.page, self.show_dl_progress_dialog)
-        dirpath_for_dest_of_downloads = self.dirpath_for_dest_of_downloads
-        for task_name, reserved_task_name in zip(
-            self.dltask_manager.tasks.keys(), self.reserved_tasknames()
-        ):
-            if task_name == reserved_task_name:
-                for progress in self.dltask_manager.download(
-                    task_name, dirpath_for_dest_of_downloads
-                ):
-                    self.dl_progress_bar.value = progress
-                    self.show_dl_progress_dialog.title.text = (
-                        i18ntexts["doing_download"] + ": " + task_name
-                    )
-        self.show_dl_progress_dialog.title.text = i18ntexts["dl_complete"]
-        self.show_dl_progress_dialog.modal = False
-        self.show_dl_progress_dialog.actions = [
-            ft.ElevatedButton(
-                text=i18ntexts["close"],
-                icon=ft.icons.CLOSE,
-                on_click=lambda e: close_all_dialog(),
-            )
-        ]
-        self.show_dl_progress_dialog.update()
-        self.dl_progress_bar.color = ft.colors.GREEN_ACCENT
-        self.dl_progress_bar.update()
-
-    def show_err_for_newtaskname_textfield(self, err_text: str):
-        self.new_taskname_txtfield.current.error_text = err_text
-        self.new_taskname_txtfield.current.update()
-
-    def show_err_for_newtaskurl_textfield(self, err_text: str):
-        self.new_taskurl_txtfield.current.error_text = err_text
-        self.new_taskurl_txtfield.current.update()
-
-    def clear_err_txt_of_newtaskurl_textfield(self):
-        self.new_taskurl_txtfield.current.error_text = None
-        self.new_taskurl_txtfield.current.update()
-
-    def clear_err_txt_of_newtaskname_textfield(self):
-        self.new_taskname_txtfield.current.error_text = None
-        self.new_taskname_txtfield.current.update()
-
-    def add_task(self):
-        invalid_task = False
-        if not (task_name := self.new_taskname_txtfield.current.value):
-            self.show_err_for_newtaskname_textfield(i18ntexts["input_dl_task_name"])
-            invalid_task = True
-        elif self.dltask_manager.tasks.get(task_name):
-            self.show_err_for_newtaskname_textfield(i18ntexts["duplicate_task_name"])
-            invalid_task = True
-        if not is_url(task_url := self.new_taskurl_txtfield.current.value):
-            self.show_err_for_newtaskurl_textfield(i18ntexts["input_dl_url"])
-            invalid_task = True
-        if not invalid_task:
-            self.dltask_manager.add_task(name=task_name, task=DownloaderTask(task_url))
-            self.tasks_view.current.controls.append(
-                TaskDisplay(
-                    task_name=task_name,
-                    task_manager=self.dltask_manager,
-                    delete_task_func=self._delete_task,
-                )
-            )
-            self.tasks_view.current.update()
-            self.clear_err_txt_of_newtaskname_textfield()
-            self.clear_err_txt_of_newtaskurl_textfield()
-
-    def _delete_task(self, taskdisplay: TaskDisplay):
-        if isinstance(taskdisplay, TaskDisplay):
-            self.tasks_view.current.controls.remove(taskdisplay)
-            self.tasks_view.current.update()
 
 
 class SettingsScene(ft.UserControl):

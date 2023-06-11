@@ -1,0 +1,20 @@
+{
+    "config_will_be_updated_next_launch": "設定は次回起動時反映されます",
+    "tab_header_downloader": "Downloader",
+    "tab_header_settings": "Settings",
+    "add_task": "Add new task",
+    "input_dl_url": "Input URL to download",
+    "input_dl_task_name": "Input new task's name",
+    "duplicate_task_name": "duplicate_task_name",
+    "download": "Download",
+    "ask_confirm_dl": "ask_confirm_dl",
+    "yes": "Yes",
+    "no": "No",
+    "doing_download": "doing_download",
+    "dl_complete": "ダウンロード完了",
+    "close": "閉じる",
+    "load_tasks_file": "タスクリストを読み込む",
+    "switch_theme_dark_or_light": "ダークテーマ・ライトテーマを切り替える",
+    "language": "言語", 
+    "saved_settings": "設定を保存しました"
+}

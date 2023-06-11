@@ -12,15 +12,33 @@ from dogaas.downloader import TaskManager, DownloaderTask, is_url
 THIS_SCRIPT_DIR = Path(sys.argv[0]).parent.absolute()
 CONFIG_FILENAME = "config.json"
 I18N_DIRNAME = "i18n"
+LANGUAGES = {"en": "English", "ja": "日本語"}
 
-with open(THIS_SCRIPT_DIR / CONFIG_FILENAME, encoding="utf-8") as f:
-    config: dict = json.load(f)
 
-with open(
-    THIS_SCRIPT_DIR / I18N_DIRNAME / "gui" / f"{config['language']}.json",
-    encoding="utf-8",
-) as f:
-    i18ntexts: dict[str, str] = json.load(f)
+def load_config() -> dict:
+    with open(THIS_SCRIPT_DIR / CONFIG_FILENAME, encoding="utf-8") as f:
+        config = json.load(f)
+    return config
+
+
+config = load_config()
+
+
+def save_config():
+    with open(THIS_SCRIPT_DIR / CONFIG_FILENAME, "w") as f:
+        json.dump(config, f, indent=4)
+
+
+def load_i18ntexts() -> dict[str, str]:
+    with open(
+        THIS_SCRIPT_DIR / I18N_DIRNAME / "gui" / f"{config['language']}.json",
+        encoding="utf-8",
+    ) as f:
+        i18ntexts = json.load(f)
+    return i18ntexts
+
+
+i18ntexts = load_i18ntexts()
 
 
 def open_dialog(page: ft.Page, dialog: ft.AlertDialog):
@@ -127,9 +145,9 @@ class DownloaderScene(ft.UserControl):
 
     def build(self):
         self.tasks_view = ft.Ref[ft.Column]()
-        add_task_btn = ft.Ref[ft.ElevatedButton]()
         self.new_taskname_txtfield = ft.Ref[ft.TextField]()
         self.new_taskurl_txtfield = ft.Ref[ft.TextField]()
+        add_task_btn = ft.Ref[ft.ElevatedButton]()
         self.download_btn = ft.Ref[ft.ElevatedButton]()
         return ft.Container(
             ft.Column(
@@ -177,8 +195,43 @@ class DownloaderScene(ft.UserControl):
 
 
 class SettingsScene(ft.UserControl):
+    def __init__(self, page: ft.Page):
+        super().__init__()
+        self.page = page
+
     def build(self):
-        return ft.Text("Hello world")
+        # theme_dropdown = ft.Ref[ft.Dropdown]()
+        self.language_dropdown = ft.Ref[ft.Dropdown]()
+        return ft.Container(
+            ft.Column(
+                [
+                    ft.Text(i18ntexts["config_will_be_updated_next_launch"]),
+                    # ft.Row([ft.Switch(ref=theme_dropdown)]),
+                    ft.Row(
+                        [
+                            ft.Text(i18ntexts["language"]),
+                            ft.Dropdown(
+                                ref=self.language_dropdown,
+                                hint_text=LANGUAGES[config["language"]],
+                                options=[
+                                    ft.dropdown.Option(key=lang_key, text=lang_name)
+                                    for lang_key, lang_name in LANGUAGES.items()
+                                ],
+                                on_change=self.language_dropdown_on_change,
+                            ),
+                        ]
+                    ),
+                ],
+                expand=1,
+            ),
+            padding=10,
+            expand=1,
+        )
+
+    def language_dropdown_on_change(self, e):
+        control = self.language_dropdown.current
+        config["language"] = control.value
+        save_config()
 
 
 def main(page: ft.Page):
@@ -189,7 +242,7 @@ def main(page: ft.Page):
             ft.Tab(
                 text=i18ntexts["tab_header_downloader"], content=DownloaderScene(page)
             ),
-            ft.Tab(text=i18ntexts["tab_header_settings"], content=SettingsScene()),
+            ft.Tab(text=i18ntexts["tab_header_settings"], content=SettingsScene(page)),
         ],
         expand=1,
     )

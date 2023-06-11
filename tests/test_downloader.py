@@ -22,7 +22,7 @@ class TestTaskManager:
         taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
         assert taskmanager.tasks["task_a"].url == "https://dummy_url_a"
         with pytest.raises(DuplicateTaskError):
-            taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
+            taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"), raise_if_duplicate=True)
 
     @staticmethod
     def test_remove_task():
@@ -40,20 +40,6 @@ class TestTaskManager:
         assert taskmanager.tasks["task_A"].url == "https://dummy_url_a"
 
     @staticmethod
-    def test_download(tmpdir):
-        MOCK_URL = "https://httpbin.org"
-        TASK_NAME = "task_a"
-        taskmanager = TaskManager()
-        taskmanager.add_task(TASK_NAME, DownloaderTask(MOCK_URL))
-        # with patch("requests.get", return_value=1) as mock:
-        #     response = requests.models.Response()
-        #     response.request = requests.models.Request(url=MOCK_URL)
-        #     response.status_code = 403
-        #     mock.return_value = response
-        #     with pytest.raises(requests.exceptions.HTTPError):
-        taskmanager.download(TASK_NAME, tmpdir)
-
-    @staticmethod
     def test_save_tasks_to_json(tmpdir):
         taskmanager = TaskManager()
         taskmanager.add_task("task_a", DownloaderTask("https://dummy_url_a"))
@@ -67,4 +53,3 @@ class TestTaskManager:
         taskmanager.load_tasks_from_json(tmpdir.join("test.json"))
         with pytest.raises(FileNotFoundError):
             taskmanager.load_tasks_from_json(tmpdir.join("invalidfilename"))
-

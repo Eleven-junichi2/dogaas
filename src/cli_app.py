@@ -46,7 +46,7 @@ def is_task_exists(msg_if_not_exists=None) -> bool:
         return False
 
 
-def echo_tasks():
+def _tasks():
     if is_task_exists(msg_if_not_exists=i18ntexts["there_are_no_tasks"]):
         [
             click.echo(f"{i} {task_name} {task.url}")
@@ -56,7 +56,23 @@ def echo_tasks():
 
 @cli.command(aliases=["list", "ls", "show"], help=i18ntexts["help_msg_tasks"])
 def tasks():
-    echo_tasks()
+    _tasks()
+
+
+def _add(name, url):
+    if is_url(task_url := url):
+        task = DownloaderTask(task_url)
+        try:
+            task_manager.add_task(name, task, raise_if_duplicate=True)
+        except DuplicateTaskError:
+            click.echo(i18ntexts["duplicate_task_name"], err=True)
+        else:
+            click.secho(i18ntexts["added_task"], fg="bright_green")
+            click.secho(i18ntexts["task_name"] + ": " + name, fg="green")
+            click.secho("URL: " + task_url, fg="green")
+            task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
+    else:
+        click.echo(i18ntexts["invalid_url"], err=True)
 
 
 @cli.command(help=i18ntexts["help_msg_add"])
@@ -73,19 +89,17 @@ def tasks():
     help=i18ntexts["input_dl_url"],
 )
 def add(name, url):
-    if is_url(task_url := url):
-        task = DownloaderTask(task_url)
-        try:
-            task_manager.add_task(name, task, raise_if_duplicate=True)
-        except DuplicateTaskError:
-            click.echo(i18ntexts["duplicate_task_name"], err=True)
-        else:
-            click.secho(i18ntexts["added_task"], fg="bright_green")
-            click.secho(i18ntexts["task_name"] + ": " + name, fg="green")
-            click.secho("URL: " + task_url, fg="green")
-            task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
+    _add(name, url)
+
+
+def _remove(name):
+    try:
+        task_manager.remove_task(name)
+    except KeyError:
+        click.echo(i18ntexts["task_for_given_taskname_not_found"], err=True)
     else:
-        click.echo(i18ntexts["invalid_url"], err=True)
+        click.secho(i18ntexts["removed_task"] + ": " + name, fg="bright_green")
+        task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
 
 
 @cli.command(aliases=["rm", "del"], help=i18ntexts["help_msg_remove"])
@@ -96,37 +110,10 @@ def add(name, url):
     help=i18ntexts["input_dl_task_name"],
 )
 def remove(name):
-    try:
-        task_manager.remove_task(name)
-    except KeyError:
-        click.echo(i18ntexts["task_for_given_taskname_not_found"], err=True)
-    else:
-        click.secho(i18ntexts["removed_task"] + ": " + name, fg="bright_green")
-        task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
+    _remove(name)
 
 
-def validate_dl_taskname(ctx, param, value):
-    if isinstance(value, str):
-        return value
-    else:
-        raise click.BadParameter(i18ntexts["there_are_no_tasks"])
-
-
-@cli.command(aliases=["dl", "do"], help=i18ntexts["help_msg_download"])
-@click.option(
-    "--name",
-    "-N",
-    type=click.Choice(task_manager.tasks.keys()),
-    callback=validate_dl_taskname,
-    prompt=i18ntexts["input_dl_task_name"],
-)
-@click.option(
-    "--dirpath-for-dest",
-    "--dest",
-    prompt=i18ntexts["input_destdir_for_dl"],
-    type=click.Path(file_okay=False),
-)
-def download(name, dirpath_for_dest):
+def _download(name, dirpath_for_dest):
     downloader = task_manager.make_downloader_from_task(name)
     progress_bar = tqdm(
         total=float(downloader.get_filesize_str()),
@@ -141,6 +128,23 @@ def download(name, dirpath_for_dest):
     click.secho(i18ntexts["dl_complete"], fg="bright_green")
 
 
+@cli.command(aliases=["dl", "do"], help=i18ntexts["help_msg_download"])
+@click.option(
+    "--name",
+    "-N",
+    type=click.Choice(task_manager.tasks.keys()),
+    prompt=i18ntexts["input_dl_task_name"],
+)
+@click.option(
+    "--dirpath-for-dest",
+    "--dest",
+    prompt=i18ntexts["input_destdir_for_dl"],
+    type=click.Path(file_okay=False),
+)
+def download(name, dirpath_for_dest):
+    _download(name, dirpath_for_dest)
+
+
 @cli.command(help=i18ntexts["help_msg_shell"])
 def repl():
     help_text_lines = [
@@ -153,16 +157,26 @@ def repl():
     while True:
         cmd = click.prompt(i18ntexts["how_to_exit_shell"])
         match cmd:
+            # do _command() instead of command() because command() raise an
+            # exception when call it in this function.
             case "add":
-                add()
+                name = click.prompt(i18ntexts["input_dl_task_name"])
+                url = click.prompt(i18ntexts["input_dl_url"])
+                _add(name, url)
             case "remove":
-                remove()
+                name = click.prompt(i18ntexts["input_dl_task_name"])
+                _remove(name)
             case "tasks":
-                # do echo_tasks() instead of echo_tasks() because tasks() raise an
-                # exception when call tasks() in this function.
-                echo_tasks()
+                _tasks()
             case "download":
-                download()
+                name = click.prompt(
+                    i18ntexts["input_dl_task_name"],
+                    type=click.Choice(task_manager.tasks.keys()),
+                )
+                dirpath_for_dest = click.prompt(
+                    i18ntexts["input_destdir_for_dl"], type=click.Path(file_okay=False)
+                )
+                _download(name, dirpath_for_dest)
         if cmd in {"exit", "quit"}:
             sys.exit()
 

@@ -15,10 +15,7 @@ A downloader tool
 dogaas-cli [OPTIONS] COMMAND [ARGS]...
 ```
 
-- add
-- remove
-- list
-- download
+`--help` option to show help text
 
 ### GUI
 

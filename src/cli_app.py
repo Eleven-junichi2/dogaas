@@ -3,8 +3,8 @@ import sys
 import json
 
 from click_aliases import ClickAliasedGroup
-import click
 from tqdm import tqdm
+import click
 
 from dogaas.downloader import TaskManager, DownloaderTask, DuplicateTaskError, is_url
 
@@ -37,27 +37,26 @@ def cli():
     pass
 
 
-ALIASES_FOR_SHELL_SUBCMD = ["interact", "interactive-shell", "interactive"]
+def is_task_exists(msg_if_not_exists=None) -> bool:
+    if len(task_manager.tasks) > 0:
+        return True
+    else:
+        if msg_if_not_exists:
+            click.echo(msg_if_not_exists, err=True)
+        return False
 
 
-@cli.command(
-    aliases=ALIASES_FOR_SHELL_SUBCMD,
-    help=i18ntexts["help_msg_shell"],
-)
-def shell():
-    while True:
-        args_str: str = click.prompt(
-            "", prompt_suffix=f"{i18ntexts['how_to_exit_shell']}> "
-        )
-        # -prevent to shell called-
-        if (args := args_str.split(" "))[0] not in ALIASES_FOR_SHELL_SUBCMD + ["shell"]:
-            break
-        # --
-    try:
-        cli.main(args=args)
-    except SystemExit:
-        pass
-    click.pause(i18ntexts["pause_input_to_end"])
+def echo_tasks():
+    if is_task_exists(msg_if_not_exists=i18ntexts["there_are_no_tasks"]):
+        [
+            click.echo(f"{i} {task_name} {task.url}")
+            for i, (task_name, task) in enumerate(task_manager.tasks.items())
+        ]
+
+
+@cli.command(aliases=["list", "ls", "show"], help=i18ntexts["help_msg_tasks"])
+def tasks():
+    echo_tasks()
 
 
 @cli.command(help=i18ntexts["help_msg_add"])
@@ -106,17 +105,6 @@ def remove(name):
         task_manager.save_tasks_to_json(THIS_SCRIPT_DIR, TASKS_FILENAME_WITHOUT_EXT)
 
 
-@cli.command(aliases=["tasks"], help=i18ntexts["help_msg_remove"])
-def list():
-    if len(task_manager.tasks) > 0:
-        [
-            click.echo(f"{i} {task_name} {task.url}")
-            for i, (task_name, task) in enumerate(task_manager.tasks.items())
-        ]
-    else:
-        click.echo(i18ntexts["there_are_no_tasks"], err=True)
-
-
 def validate_dl_taskname(ctx, param, value):
     if isinstance(value, str):
         return value
@@ -124,7 +112,7 @@ def validate_dl_taskname(ctx, param, value):
         raise click.BadParameter(i18ntexts["there_are_no_tasks"])
 
 
-@cli.command(aliases=["dl", "do"])
+@cli.command(aliases=["dl", "do"], help=i18ntexts["help_msg_download"])
 @click.option(
     "--name",
     "-N",
@@ -151,6 +139,32 @@ def download(name, dirpath_for_dest):
         progress_bar.update(progress)
     progress_bar.close()
     click.secho(i18ntexts["dl_complete"], fg="bright_green")
+
+
+@cli.command(help=i18ntexts["help_msg_shell"])
+def repl():
+    help_text_lines = [
+        f"{cmd}\t{cli.commands[cmd].help}"
+        for cmd in list(cli.commands.keys())
+        if cmd not in ("repl",)
+    ]
+    help_text_lines.sort()
+    [click.echo(help_text) for help_text in help_text_lines]
+    while True:
+        cmd = click.prompt(i18ntexts["how_to_exit_shell"])
+        match cmd:
+            case "add":
+                add()
+            case "remove":
+                remove()
+            case "tasks":
+                # do echo_tasks() instead of echo_tasks() because tasks() raise an
+                # exception when call tasks() in this function.
+                echo_tasks()
+            case "download":
+                download()
+        if cmd in {"exit", "quit"}:
+            sys.exit()
 
 
 if __name__ == "__main__":

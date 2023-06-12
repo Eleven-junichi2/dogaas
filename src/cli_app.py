@@ -10,6 +10,8 @@ from dogaas.downloader import TaskManager, DownloaderTask, DuplicateTaskError, i
 
 THIS_SCRIPT_DIR = Path(sys.argv[0]).parent.absolute()
 TASKS_FILENAME_WITHOUT_EXT = "tasks"
+TASKS_FILE_EXT = "json"
+WHERE_TO_SAVE_TASK = THIS_SCRIPT_DIR / f"{TASKS_FILENAME_WITHOUT_EXT}.{TASKS_FILE_EXT}"
 CONFIG_FILENAME = "config.json"
 I18N_DIRNAME = "i18n"
 
@@ -25,9 +27,7 @@ with open(
 task_manager = TaskManager()
 
 try:
-    task_manager.load_tasks_from_json(
-        THIS_SCRIPT_DIR / f"{TASKS_FILENAME_WITHOUT_EXT}.json"
-    )
+    task_manager.load_tasks_from_json(WHERE_TO_SAVE_TASK)
 except FileNotFoundError:
     pass
 
@@ -47,6 +47,7 @@ def is_task_exists(msg_if_not_exists=None) -> bool:
 
 
 def _tasks():
+    click.echo(i18ntexts["where_to_save"] + f": {str(WHERE_TO_SAVE_TASK)}")
     if is_task_exists(msg_if_not_exists=i18ntexts["there_are_no_tasks"]):
         [
             click.echo(f"{i} {task_name} {task.url}")

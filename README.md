@@ -22,7 +22,3 @@ dogaas-cli [OPTIONS] COMMAND [ARGS]...
 WIP
 
 ## Roadmap
-
-- Loading tasks file
-- Config
-  - tasks file's path

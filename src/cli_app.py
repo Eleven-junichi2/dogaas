@@ -28,8 +28,8 @@ task_manager = TaskManager()
 
 try:
     task_manager.load_tasks_from_json(WHERE_TO_SAVE_TASK)
-except FileNotFoundError:
-    pass
+except FileNotFoundError as e:
+    click.echo(e, err=True)
 
 
 @click.group(cls=ClickAliasedGroup)

@@ -4,7 +4,7 @@ A downloader tool
 
 ## Features
 
-- Save and list download lists (it called "tasks")
+- Save and Show lists for downloads (it called "tasks")
 - Download from tasks
 
 ## Get Started
